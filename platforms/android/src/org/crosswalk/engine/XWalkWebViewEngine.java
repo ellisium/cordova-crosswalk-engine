@@ -27,6 +27,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.View;
+import android.webkit.ValueCallback;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,6 +60,7 @@ public class XWalkWebViewEngine implements CordovaWebViewEngine {
     public static final String XWALK_Z_ORDER_ON_TOP = "xwalkZOrderOnTop";
 
     private static final String XWALK_EXTENSIONS_FOLDER = "xwalk-extensions";
+    private static final String XWALK_FILE_SCHEME_COOKIES = "xwalkFileSchemeCookies";
 
     protected final XWalkCordovaView webView;
     protected XWalkCordovaCookieManager cookieManager;
@@ -72,9 +74,12 @@ public class XWalkWebViewEngine implements CordovaWebViewEngine {
     protected XWalkActivityDelegate activityDelegate;
     protected String startUrl;
     protected CordovaPreferences preferences;
+    protected boolean xwalkFileSchemeCookies;
 
     /** Used when created via reflection. */
     public XWalkWebViewEngine(Context context, CordovaPreferences preferences) {
+        xwalkFileSchemeCookies = preferences == null ? false : preferences.getBoolean(XWALK_FILE_SCHEME_COOKIES, false);
+
         this.preferences = preferences;
         Runnable cancelCommand = new Runnable() {
             @Override
@@ -86,6 +91,11 @@ public class XWalkWebViewEngine implements CordovaWebViewEngine {
             @Override
             public void run() {
                 cookieManager = new XWalkCordovaCookieManager();
+
+                if (xwalkFileSchemeCookies) {
+                  cookieManager.setCookiesEnabled(true);
+                  cookieManager.setAcceptFileSchemeCookies(true);
+                }
 
                 initWebViewSettings();
                 exposeJsInterface(webView, bridge);
@@ -300,6 +310,16 @@ public class XWalkWebViewEngine implements CordovaWebViewEngine {
             return;
         }
         webView.load(url, null);
+    }
+
+    /**
+     * This API is used in Cordova-Android 6.0.0 override from
+     *
+     * CordovaWebViewEngine.java
+     * @since Cordova 6.0
+     */
+    public void evaluateJavascript(String js, ValueCallback<String> callback) {
+        webView.evaluateJavascript(js, callback);
     }
 
     public boolean isXWalkReady() {
